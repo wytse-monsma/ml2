@@ -7,11 +7,6 @@ services:
               source: ./agents/replay.json
               target: /app/replay.json
 
-    go-agent:
-        build:
-            context: agents/go
-            dockerfile: Dockerfile
-
     python3-agent:
         build:
             context: agents/python3
@@ -35,6 +30,7 @@ services:
             dockerfile: Dockerfile.fwd.dev
         volumes:
             - ./agents/python3:/app
+
     python3-gym-dev:
         build:
             context: agents/python3
@@ -42,24 +38,9 @@ services:
         volumes:
             - ./agents/python3:/app
 
-    typescript-agent:
+    python3-ml2-dev:
         build:
-            context: agents/typescript
-            dockerfile: Dockerfile
-
-    typescript-agent-dev:
-        build:
-            context: agents/typescript
-            dockerfile: Dockerfile.dev
+            context: agents/python3
+            dockerfile: Dockerfile.ml2.dev
         volumes:
-            - ./agents/typescript:/app
-
-    cpp-agent:
-        build:
-            context: agents/cpp
-            dockerfile: Dockerfile
-
-    rust-agent:
-        build:
-            context: agents/rust
-            dockerfile: Dockerfile
+            - ./agents/python3:/app

@@ -31,6 +31,10 @@ docker-compose up --abort-on-container-exit --force-recreate
 
 3. While the engine is running, access the client by going to `http://localhost:3000/` in your browser (may be different depending on your settings).
 4. From the client, you can connect as a `spectator` or `agent` (to play as a human player)
+5. Whenever a change is made to `bace-compose.yml` or to `docker-compose.yml` a build is required. Do so using:
+```
+docker-compose up --abort-on-container-exit --force-recreate --build
+```
 
 ### Open AI gym wrapper
 

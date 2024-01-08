@@ -61,14 +61,7 @@ class Agent():
 
     
 def main():
-    for i in range(0,10):
-        while True:
-            try:
-                Agent()
-            except:
-                time.sleep(5)
-                continue
-            break
+    Agent()
 
 if __name__ == "__main__":
     main()

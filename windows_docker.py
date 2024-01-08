@@ -55,16 +55,16 @@ async def main():
                 a1_stdout, _ = await a1_process.communicate()
                 if VERBOSE: print("A1>", a1_stdout.decode())
                 
-                # Check if a1_stdout is empty or non-JSON
-                if not a1_stdout:
-                    print("Error: Empty output from agent A.")
-                    return  # or handle the error appropriately
+                # # Check if a1_stdout is empty or non-JSON
+                # if not a1_stdout:
+                #     print("Error: Empty output from agent A.")
+                #     return  # or handle the error appropriately
 
-                try:
-                    return json.loads(a1_stdout.decode())
-                except json.JSONDecodeError as e:
-                    print(f"Error decoding JSON from agent A output: {e}")
-                    return  # or handle the error appropriately
+                # try:
+                #     return json.loads(a1_stdout.decode())
+                # except json.JSONDecodeError as e:
+                #     print(f"Error decoding JSON from agent A output: {e}")
+                #     return  # or handle the error appropriately
 
                 # read output from agent B
                 a2_stdout, _ = await a2_process.communicate()

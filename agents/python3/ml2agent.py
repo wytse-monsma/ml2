@@ -36,29 +36,30 @@ class Agent():
             return None
 
     async def _on_game_tick(self, tick_number, game_state):
-        # print(f'TICK FROM ML2 {tick_number}')
-        # print(game_state)
+        print(f'TICK FROM ML2 {tick_number}, {game_state}')
         # get my units
         my_agent_id = game_state.get("connection").get("agent_id")
         my_units = game_state.get("agents").get(my_agent_id).get("unit_ids")
 
         # send each unit a random action
         for unit_id in my_units:
-            await self._client.send_move("up", unit_id)
+            action = algorithm(game_state, unit_id)
 
-            # action = random.choice(actions)
-            # if action in ["up", "left", "right", "down"]:
-            #     await self._client.send_move(action, unit_id)
-            # elif action == "bomb":
-            #     await self._client.send_bomb(unit_id)
-            # elif action == "detonate":
-            #     bomb_coordinates = self._get_bomb_to_detonate(unit_id)
-            #     if bomb_coordinates != None:
-            #         x, y = bomb_coordinates
-            #         await self._client.send_detonate(x, y, unit_id)
-            # else:
-            #     print(f"Unhandled action: {action} for unit {unit_id}")
+            if action in ["up", "left", "right", "down"]:
+                await self._client.send_move(action, unit_id)
+            elif action == "bomb":
+                await self._client.send_bomb(unit_id)
+            elif action == "detonate":
+                bomb_coordinates = self._get_bomb_to_detonate(unit_id)
+                if bomb_coordinates != None:
+                    x, y = bomb_coordinates
+                    await self._client.send_detonate(x, y, unit_id)
+            else:
+                print(f"Unhandled action: {action} for unit {unit_id}")
 
+def algorithm(game_state, unit_id) -> str:
+    action = random.choice(actions)
+    return action
     
 def main():
     for i in range(0,10):

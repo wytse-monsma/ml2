@@ -36,7 +36,7 @@ class Agent():
             return None
 
     async def _on_game_tick(self, tick_number, game_state):
-        print(f'TICK FROM ML2 {tick_number}, {game_state}')
+        # print(f'TICK FROM ML2 {tick_number}, {game_state}')
         # get my units
         my_agent_id = game_state.get("connection").get("agent_id")
         my_units = game_state.get("agents").get(my_agent_id).get("unit_ids")

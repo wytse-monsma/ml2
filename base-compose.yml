@@ -44,3 +44,10 @@ services:
             dockerfile: Dockerfile.ml2.dev
         volumes:
             - ./agents/python3:/app
+
+    python3-admin-dev:
+        build:
+            context: agents/python3
+            dockerfile: Dockerfile.admin.dev
+        volumes:
+            - ./agents/python3:/app

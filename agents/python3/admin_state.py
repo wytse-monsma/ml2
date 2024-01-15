@@ -8,14 +8,41 @@ from websockets.client import WebSocketClientProtocol
 _move_set = set(("up", "down", "left", "right"))
 
 
-class GameState:
+class AdminState:
     def __init__(self, connection_string: str):
+        self._game_count = 1
         self._connection_string = connection_string
         self._state = None
         self._tick_callback = None
 
+        # Variables for a reward function
+        self._winner = None
+        self._num_of_blocks_destroyed_by_id = 0
+        self._invalid_moves = 0
+        self._valid_moves = 0
+        self._total_ticks = []
+
     def set_game_tick_callback(self, generate_agent_action_callback):
         self._tick_callback = generate_agent_action_callback
+
+    def save_vars_from_state_to_disk(self):
+        dict_to_save = {
+            "result": self._result,
+            "num_of_blocks_destroyed_by_self": self._num_of_blocks_destroyed_by_self,
+            "invalid_moves": self._invalid_moves,
+            "valid_moves": self._valid_moves,
+            "total_ticks": self._total_ticks
+        }
+
+        with open(f"/app/data/game{self._game_count}.txt", "w") as file:
+            file.write(json.dumps(dict_to_save))
+
+    def reset_vars(self):
+        self._result = None
+        self._num_of_blocks_destroyed_by_self = 0
+        self._invalid_moves = 0
+        self._valid_moves = 0
+        self._total_ticks = []
 
     async def connect(self):
         self.connection = await websockets.connect(self._connection_string)
@@ -24,20 +51,6 @@ class GameState:
 
     async def _send(self, packet):
         await self.connection.send(json.dumps(packet))
-
-    async def send_move(self, move: str, unit_id: str):
-        if move in _move_set:
-            packet = {"type": "move", "move": move, "unit_id": unit_id}
-            await self._send(packet)
-
-    async def send_bomb(self, unit_id: str):
-        packet = {"type": "bomb", "unit_id": unit_id}
-        await self._send(packet)
-
-    async def send_detonate(self, x, y, unit_id: str):
-        packet = {"type": "detonate", "coordinates": [
-            x, y], "unit_id": unit_id}
-        await self._send(packet)
 
     async def _handle_messages(self, connection: WebSocketClientProtocol):
         while True:
@@ -61,10 +74,21 @@ class GameState:
         elif data_type == "tick":
             payload = data.get("payload")
             await self._on_game_tick(payload)
+            current_tick = payload.get("tick")
+            self._total_ticks.append(current_tick)
+
         elif data_type == "endgame_state":
             payload = data.get("payload")
             winning_agent_id = payload.get("winning_agent_id")
             print(f"Game over. Winner: Agent {winning_agent_id}")
+            self._result = winning_agent_id
+
+            if self._game_count < 5:
+                await self._send({"type": "request_game_reset", "world_seed": 1234, "prng_seed": 1234})
+                self._game_count += 1
+                print(f"Game reset requested to start game {self._game_count}")
+            else:
+                print("Game count limit reached. Exiting.")
         else:
             print(f"unknown packet \"{data_type}\": {data}")
 

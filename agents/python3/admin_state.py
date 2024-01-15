@@ -16,33 +16,72 @@ class AdminState:
         self._tick_callback = None
 
         # Variables for a reward function
-        self._winner = None
-        self._num_of_blocks_destroyed_by_id = 0
-        self._invalid_moves = 0
-        self._valid_moves = 0
-        self._total_ticks = []
+        self._winner = None # Either "a" or "b"
+        self._total_ticks = 0 # Total number of ticks in the game
+        self._a_invalid_moves = 0 # Not implemented
+        self._a_valid_moves = 0 # Not implemented
+        self._a_agents = [] # List of tuples per unit (unit_id, hp, initial_position, final_position, bombs_used)
+        self._b_invalid_moves = 0 # Not implemented
+        self._b_valid_moves = 0 # Not implemented
+        self._b_agents = [] # List of tuples per unit (unit_id, hp, initial_position, final_position, bombs_used)
 
     def set_game_tick_callback(self, generate_agent_action_callback):
         self._tick_callback = generate_agent_action_callback
 
     def save_vars_from_state_to_disk(self):
+        def agent_dict(agent_data):
+            return {
+                "hp": agent_data[1],
+                "initial_position": agent_data[2],
+                "final_position": agent_data[3],
+                "bombs_used": agent_data[4]
+            }
+        
         dict_to_save = {
-            "result": self._result,
-            "num_of_blocks_destroyed_by_self": self._num_of_blocks_destroyed_by_self,
-            "invalid_moves": self._invalid_moves,
-            "valid_moves": self._valid_moves,
-            "total_ticks": self._total_ticks
+            "winner": self._winner,
+            "total_ticks": self._total_ticks,
+            "a": {
+                "invalid_moves": self._a_invalid_moves,
+                "valid_moves": self._a_valid_moves,
+                **{str(self._a_agents[i][0]): agent_dict(self._a_agents[i]) for i in range(3)}
+            },
+            "b": {
+                "invalid_moves": self._b_invalid_moves,
+                "valid_moves": self._b_valid_moves,
+                **{str(self._b_agents[i][0]): agent_dict(self._b_agents[i]) for i in range(3)}
+            }
         }
 
         with open(f"/app/data/game{self._game_count}.txt", "w") as file:
             file.write(json.dumps(dict_to_save))
 
     def reset_vars(self):
-        self._result = None
-        self._num_of_blocks_destroyed_by_self = 0
-        self._invalid_moves = 0
-        self._valid_moves = 0
-        self._total_ticks = []
+        self._winner = None
+        self._total_ticks = 0
+        self._a_invalid_moves = 0
+        self._a_valid_moves = 0
+        self._a_agents = []
+        self._b_invalid_moves = 0
+        self._b_valid_moves = 0
+        self._b_agents = []
+
+    def parse_endgame_state(self, payload):
+        self._winner = payload.get("winning_agent_id")
+        self._total_ticks = payload.get("history")[-1].get("tick")
+
+        agents_a = self._state.get("agents").get("a").get("unit_ids")
+        for agent in agents_a:
+            unit_state = self._state.get("unit_state").get(agent)
+            payload_unit_state = payload.get("initial_state").get("unit_state").get(agent)
+            bombs_used = payload_unit_state.get("inventory").get("bombs") - unit_state.get("inventory").get("bombs")
+            self._a_agents.append((unit_state.get("unit_id"), unit_state.get("hp"), payload_unit_state.get("coordinates"), unit_state.get("coordinates"), bombs_used))
+
+        agents_b = self._state.get("agents").get("b").get("unit_ids")
+        for agent in agents_b:
+            unit_state = self._state.get("unit_state").get(agent)
+            payload_unit_state = payload.get("initial_state").get("unit_state").get(agent)
+            bombs_used = payload_unit_state.get("inventory").get("bombs") - unit_state.get("inventory").get("bombs")
+            self._b_agents.append((unit_state.get("unit_id"), unit_state.get("hp"), payload_unit_state.get("coordinates"), unit_state.get("coordinates"), bombs_used))
 
     async def connect(self):
         self.connection = await websockets.connect(self._connection_string)
@@ -74,16 +113,15 @@ class AdminState:
         elif data_type == "tick":
             payload = data.get("payload")
             await self._on_game_tick(payload)
-            current_tick = payload.get("tick")
-            self._total_ticks.append(current_tick)
 
         elif data_type == "endgame_state":
             payload = data.get("payload")
-            winning_agent_id = payload.get("winning_agent_id")
-            print(f"Game over. Winner: Agent {winning_agent_id}")
-            self._result = winning_agent_id
+            self.parse_endgame_state(payload)
+            print(f"Game over. Winner: Agent {self._winner}")
+            self.save_vars_from_state_to_disk()
+            self.reset_vars()
 
-            if self._game_count < 5:
+            if self._game_count < 2:
                 await self._send({"type": "request_game_reset", "world_seed": 1234, "prng_seed": 1234})
                 self._game_count += 1
                 print(f"Game reset requested to start game {self._game_count}")

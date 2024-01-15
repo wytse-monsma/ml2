@@ -58,6 +58,7 @@ class AdminState:
     def reset_vars(self):
         self._winner = None
         self._total_ticks = 0
+        self._unit_hps = {}
         self._a_invalid_moves = 0
         self._a_valid_moves = 0
         self._a_agents = []
@@ -68,6 +69,7 @@ class AdminState:
     def parse_endgame_state(self, payload):
         self._winner = payload.get("winning_agent_id")
         self._total_ticks = payload.get("history")[-1].get("tick")
+        self._unit_hps = self.get_damage_dealt(payload)
 
         agents_a = self._state.get("agents").get("a").get("unit_ids")
         for agent in agents_a:
@@ -82,6 +84,28 @@ class AdminState:
             payload_unit_state = payload.get("initial_state").get("unit_state").get(agent)
             bombs_used = payload_unit_state.get("inventory").get("bombs") - unit_state.get("inventory").get("bombs")
             self._b_agents.append((unit_state.get("unit_id"), unit_state.get("hp"), payload_unit_state.get("coordinates"), unit_state.get("coordinates"), bombs_used))
+
+    # Wytse with the sauce
+    def get_damage_dealt(self, payload):
+        unit_hps = {}
+
+        for unit in payload.get("initial_state").get("unit_state"):
+            unit_hps[unit] = payload.get("initial_state").get("unit_state").get(unit).get("hp")
+
+        for tick in payload.get("history"):
+            tick_id = tick.get("tick")
+            events = tick.get("events")
+
+            for event in events:
+                if(event.get("type") == "unit_state"):
+                    affected_unit = event.get("data").get("unit_id")
+                    affected_unit_hp = unit_hps[affected_unit]
+                    affected_unit_current_hp = event.get("data").get("hp")
+
+                    if(affected_unit_hp != affected_unit_current_hp):
+                        print(f"{affected_unit} took damage on tick {tick_id}. Remaining HP: {affected_unit_current_hp}") # Convert to dict?
+                        unit_hps[affected_unit] = affected_unit_current_hp
+        return unit_hps
 
     async def connect(self):
         self.connection = await websockets.connect(self._connection_string)

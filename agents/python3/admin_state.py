@@ -82,6 +82,7 @@ class AdminState:
             winning_agent_id = payload.get("winning_agent_id")
             print(f"Game over. Winner: Agent {winning_agent_id}")
             self._result = winning_agent_id
+            self.handle_reward(payload)
 
             if self._game_count < 5:
                 await self._send({"type": "request_game_reset", "world_seed": 1234, "prng_seed": 1234})
@@ -123,6 +124,7 @@ class AdminState:
     def _on_entity_spawned(self, spawn_event):
         spawn_payload = spawn_event.get("data")
         self._state["entities"].append(spawn_payload)
+        # self.get_inflicted_damage(spawn_payload)
 
     def _on_entity_expired(self, spawn_event):
         expire_payload = spawn_event.get("data")
@@ -140,12 +142,14 @@ class AdminState:
     def _on_unit_state(self, unit_state):
         unit_id = unit_state.get("unit_id")
         self._state["unit_state"][unit_id] = unit_state
+        self.get_cause_of_damage(unit_state)
 
     def _on_entity_state(self, x, y, updated_entity):
         for entity in self._state.get("entities"):
             if entity.get("x") == x and entity.get("y") == y:
                 self._state["entities"].remove(entity)
         self._state["entities"].append(updated_entity)
+
 
     def _on_unit_action(self, action_packet):
         unit_id = action_packet["unit_id"]
@@ -177,3 +181,61 @@ class AdminState:
             return [x+1, y]
         elif move_action == "left":
             return [x-1, y]
+        
+    def get_cause_of_damage(self, unit_state):
+        return
+        # print('UNIT STATE:')
+        # print(self._state["tick"])
+        # print(unit_state)
+        
+        # get agent that took damage
+        # get tick on which agent took damage
+        # get coordinate on which agent took damage
+        # check for explosions
+
+    def get_inflicted_damage(self, spawn_payload):
+        if(spawn_payload['type']) == 'x':
+            sender = spawn_payload['unit_id']
+            blast_radius = self._state['unit_state'][sender]['blast_diameter']
+            print("UPDATED X ENTITY")
+            print(blast_radius)
+
+    def handle_reward(self, payload):
+        # Initialize hp dictionary
+        unit_hps = {}
+
+        # Load initial hps
+        for unit in payload.get("initial_state").get("unit_state"):
+            unit_hps[unit] = payload.get("initial_state").get("unit_state").get(unit).get("hp")
+
+        # Compare current hp in tick to stored hp in dictionary
+        for tick in payload.get("history"):
+            tick_id = tick.get("tick")
+            events = tick.get("events")
+
+            # Loop over events
+            for event in events:
+                if (event.get("type") == 'unit_state'):
+                    # Unit that lost hp
+                    affected_unit = event.get("data").get("unit_id")
+                    # Stored hp of said unit
+                    affected_unit_hp = unit_hps[affected_unit]
+                    # hp of said unit in current tick
+                    affected_unit_current_hp = event.get("data").get("hp")
+
+                    # If there is a discrepancy --> it just lost hp
+                    if(affected_unit_hp) != affected_unit_current_hp:
+                        print(affected_unit, "took damage on tick: ", tick_id, ". Remaining hp: ", affected_unit_current_hp)
+                        unit_hps[affected_unit] = affected_unit_current_hp
+
+
+
+
+        
+
+
+
+        # get explosion
+        # for i in blast radius:
+            # check for other entities
+            # if block, skip
